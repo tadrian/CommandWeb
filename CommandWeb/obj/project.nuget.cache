@@ -1,0 +1,29 @@
+{
+  "version": 2,
+  "dgSpecHash": "uzSV7hRab24=",
+  "success": true,
+  "projectFilePath": "C:\\Zips\\Git\\CommandWeb\\CommandWeb\\CommandWeb.csproj",
+  "expectedPackageFiles": [
+    "C:\\Users\\thoma\\.nuget\\packages\\microsoft.aspnetcore.app.internal.assets\\10.0.0-preview.6.25358.103\\microsoft.aspnetcore.app.internal.assets.10.0.0-preview.6.25358.103.nupkg.sha512",
+    "C:\\Users\\thoma\\.nuget\\packages\\microsoft.aspnetcore.signalr\\1.2.0\\microsoft.aspnetcore.signalr.1.2.0.nupkg.sha512",
+    "C:\\Users\\thoma\\.nuget\\packages\\microsoft.net.illink.tasks\\10.0.0-preview.6.25358.103\\microsoft.net.illink.tasks.10.0.0-preview.6.25358.103.nupkg.sha512",
+    "C:\\Users\\thoma\\.nuget\\packages\\radzen.blazor\\7.1.6\\radzen.blazor.7.1.6.nupkg.sha512",
+    "C:\\Users\\thoma\\.nuget\\packages\\microsoft.netcore.app.runtime.win-x64\\10.0.0-preview.6.25358.103\\microsoft.netcore.app.runtime.win-x64.10.0.0-preview.6.25358.103.nupkg.sha512",
+    "C:\\Users\\thoma\\.nuget\\packages\\microsoft.windowsdesktop.app.runtime.win-x64\\10.0.0-preview.6.25358.103\\microsoft.windowsdesktop.app.runtime.win-x64.10.0.0-preview.6.25358.103.nupkg.sha512",
+    "C:\\Users\\thoma\\.nuget\\packages\\microsoft.aspnetcore.app.runtime.win-x64\\10.0.0-preview.6.25358.103\\microsoft.aspnetcore.app.runtime.win-x64.10.0.0-preview.6.25358.103.nupkg.sha512"
+  ],
+  "logs": [
+    {
+      "code": "NU1510",
+      "level": "Warning",
+      "message": "PackageReference Microsoft.AspNetCore.SignalR will not be pruned. Consider removing this package from your dependencies, as it is likely unnecessary.",
+      "projectPath": "C:\\Zips\\Git\\CommandWeb\\CommandWeb\\CommandWeb.csproj",
+      "warningLevel": 1,
+      "filePath": "C:\\Zips\\Git\\CommandWeb\\CommandWeb\\CommandWeb.csproj",
+      "libraryId": "Microsoft.AspNetCore.SignalR",
+      "targetGraphs": [
+        "net10.0"
+      ]
+    }
+  ]
+}

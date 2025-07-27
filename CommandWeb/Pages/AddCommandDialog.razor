@@ -1,0 +1,74 @@
+@using CommandWeb.Services
+// ...existing code...
+@inject Radzen.DialogService DialogService
+@using Radzen
+@using Radzen.Blazor
+@inject ICustomCommandService CustomCommandService
+
+@code {
+    [Parameter] public EventCallback OnSaved { get; set; }
+    [Parameter] public CustomCommand? EditCommand { get; set; }
+    private CustomCommand model = new();
+    private bool isSaving = false;
+
+    protected override void OnInitialized()
+    {
+        if (EditCommand is not null)
+        {
+            // Clone to avoid editing the original until save
+            model = new CustomCommand
+            {
+                Id = EditCommand.Id,
+                Name = EditCommand.Name,
+                Command = EditCommand.Command,
+                Arguments = EditCommand.Arguments,
+                WorkingDirectory = EditCommand.WorkingDirectory,
+                CreatedAt = EditCommand.CreatedAt
+            };
+        }
+        else
+        {
+            model = new CustomCommand();
+        }
+    }
+
+    private void SaveCommand()
+    {
+        try
+        {
+            if (string.IsNullOrWhiteSpace(model.Name) || string.IsNullOrWhiteSpace(model.Command))
+            {
+                // Optionally show validation
+                return;
+            }
+            isSaving = true;
+            if (EditCommand is not null)
+            {
+                // Update existing
+                CustomCommandService.Update(model);
+            }
+            else
+            {
+                // Add new
+                CustomCommandService.Add(model);
+            }
+            isSaving = false;
+            OnSaved.InvokeAsync();
+            DialogService.Close();
+        }
+        catch (Exception ex)
+        {
+            isSaving = false;
+            Console.WriteLine($"Error in SaveCommand: {ex.Message}\n{ex.StackTrace}");
+        }
+    }
+}
+
+<RadzenTemplateForm Data="@model" @onsubmit="SaveCommand">
+    <RadzenTextBox @bind-Value="model.Name" Placeholder="Name" Style="width: 100%; margin-bottom: 10px;" />
+    <RadzenTextBox @bind-Value="model.Command" Placeholder="Command (e.g. pwsh, cmd)" Style="width: 100%; margin-bottom: 10px;" />
+    <RadzenTextBox @bind-Value="model.Arguments" Placeholder="Arguments" Style="width: 100%; margin-bottom: 10px;" />
+    <RadzenTextBox @bind-Value="model.WorkingDirectory" Placeholder="Working Directory (optional)" Style="width: 100%; margin-bottom: 10px;" />
+    <RadzenButton Text="Save" ButtonType="ButtonType.Submit" Style="margin-right: 10px;" Disabled="@isSaving" />
+    <RadzenButton Text="Cancel" Click="@(() => DialogService.Close())" />
+</RadzenTemplateForm>

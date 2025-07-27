@@ -1,0 +1,293 @@
+@page "/commands"
+@using CommandWeb.Services
+@using CommandWeb.Pages
+@using Radzen
+@using Radzen.Blazor
+@inject ICustomCommandService CustomCommandService
+@inject Radzen.DialogService DialogService
+@inject ICommandExecutionService CommandExecutionService
+<h3>Custom Commands</h3>
+
+
+
+<div style="margin-bottom: 24px; padding: 16px; background: #f7f7f7; border-radius: 8px; border: 1px solid #e0e0e0;">
+    <h4 style="margin-top: 0;">Quick Command (Terminal)</h4>
+    <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
+        <RadzenTextBox @bind-Value="quickCommand" Placeholder="Enter command (e.g. npm install -g typescript)" Style="width: 340px;" />
+        <RadzenTextBox @bind-Value="quickWorkingDir" Placeholder="Working directory (optional)" Style="width: 220px;" />
+        <RadzenButton Text="Run" Icon="play_arrow" Disabled="@QuickRunDisabled" Click="@RunQuickCommand" Style="min-width: 80px;" />
+    </div>
+    <div style="margin-top: 10px;">
+        <pre style="background:#222;color:#eee;padding:1em;max-height:300px;overflow:auto; border-radius: 4px;">
+@foreach (var line in quickOutputLines)
+{
+    @line
+    <br />
+}
+@if (quickIsRunning)
+{
+    <span>...</span>
+}
+        </pre>
+    </div>
+</div>
+<div style="display: flex; height: 80vh;">
+    <!-- Left pane: categorized, filterable command list -->
+    <div style="width: 320px; min-width: 220px; max-width: 400px; border-right: 1px solid #ddd; display: flex; flex-direction: column;">
+        <div style="padding: 12px 12px 0 12px;">
+            <RadzenButton Text="Add Command" Icon="add_circle" Click="@OpenAddDialog" Style="width: 100%; margin-bottom: 10px;" />
+            <RadzenTextBox @bind-Value="filterText" Placeholder="Type to filter commands..." Style="width: 100%; margin-bottom: 10px;" Change="OnFilterChanged" />
+        </div>
+        <div style="flex: 1; overflow-y: auto; padding: 0 0 12px 0;">
+            @foreach (var group in groupedCommands.GroupBy(g => g.Category).OrderBy(g => g.Key))
+            {
+                var isExpanded = expandedCategories.Contains(group.Key);
+                <div style="padding: 8px 16px 4px 16px; font-weight: bold; background: #f7f7f7; border-bottom: 1px solid #eee; display: flex; align-items: center; cursor: pointer;"
+                     @onclick="() => ToggleCategory(group.Key)">
+                    <span style="margin-right: 8px; font-size: 1.1em;">@(isExpanded ? "▼" : "►")</span>
+                    <span>@group.Key</span>
+                </div>
+                @if (isExpanded)
+                {
+                    foreach (var item in group.Where(i => !i.IsGroup))
+                    {
+                        <div @onclick="() => OnSelectCommand(item)" style="padding: 8px 24px; cursor: pointer; background: @(selectedGroupedCommand == item ? "#e3f2fd" : "transparent"); border-bottom: 1px solid #f2f2f2;">
+                            <b>@item.Command?.Name</b>
+                            <span style="color: #888; font-size: 0.95em;"> @item.Command?.Command @item.Command?.Arguments</span>
+                        </div>
+                    }
+                }
+            }
+        </div>
+    </div>
+    <!-- Right pane: command details and actions -->
+    <div style="flex: 1; padding: 32px 32px 32px 32px; overflow-y: auto;">
+        @if (selectedCommand is not null)
+        {
+            <h4>Output for: @selectedCommand?.Name</h4>
+            <div>
+                <strong>Command:</strong> @selectedCommand?.Command<br />
+                <strong>Arguments:</strong> @selectedCommand?.Arguments<br />
+                <strong>Working Directory:</strong> @selectedCommand?.WorkingDirectory
+            </div>
+            @if (selectedCommand is not null)
+            {
+                <div style="margin: 10px 0; display: flex; gap: 10px;">
+                    <RadzenButton Text="Run" Icon="play_arrow" Disabled="@isRunning" Click="@(() => RunCommand(selectedCommand))" />
+                    <RadzenButton Text="Edit" Icon="edit" Click="@(() => EditCommand(selectedCommand))" />
+                </div>
+            }
+            <pre style="background:#222;color:#eee;padding:1em;max-height:400px;overflow:auto;">
+@foreach (var line in outputLines)
+{
+    @line
+    <br />
+}
+@if (isRunning)
+{
+    <span>...</span>
+}
+            </pre>
+        }
+        else
+        {
+            <div style="color: #888; font-size: 1.1em;">Select a command from the left to view details.</div>
+        }
+    </div>
+</div>
+
+@code {
+    // Quick Command (Terminal-like) section
+    private string quickCommand = string.Empty;
+    private string quickWorkingDir = string.Empty;
+    private List<string> quickOutputLines = new();
+    private bool quickIsRunning = false;
+
+    private bool QuickRunDisabled => quickIsRunning || string.IsNullOrWhiteSpace(quickCommand);
+
+    private async Task RunQuickCommand()
+    {
+        quickOutputLines.Clear();
+        quickIsRunning = true;
+        StateHasChanged();
+        string commandExe, arguments;
+        // Simple parsing: if first word is known shell, use as exe, else use OS default
+        var parts = quickCommand.Trim().Split(' ', 2);
+        if (parts.Length == 0 || string.IsNullOrWhiteSpace(parts[0]))
+        {
+            quickOutputLines.Add("No command entered.");
+            quickIsRunning = false;
+            StateHasChanged();
+            return;
+        }
+        commandExe = parts[0];
+        arguments = parts.Length > 1 ? parts[1] : string.Empty;
+        try
+        {
+            var reader = CommandExecutionService.ExecuteCommandStream(commandExe, arguments, string.IsNullOrWhiteSpace(quickWorkingDir) ? null : quickWorkingDir);
+            await foreach (var line in reader.ReadAllAsync())
+            {
+                quickOutputLines.Add(line);
+                StateHasChanged();
+            }
+        }
+        catch (Exception ex)
+        {
+            quickOutputLines.Add($"Error: {ex.Message}");
+        }
+        quickIsRunning = false;
+        StateHasChanged();
+    }
+    private HashSet<string> expandedCategories = new();
+
+    private void ToggleCategory(string category)
+    {
+        if (expandedCategories.Contains(category))
+            expandedCategories.Remove(category);
+        else
+            expandedCategories.Add(category);
+        StateHasChanged();
+    }
+
+    private IEnumerable<CustomCommand> commands = Array.Empty<CustomCommand>();
+    private List<GroupedCommandItem> groupedCommands = new();
+    private string filterText = string.Empty;
+    private void OnFilterChanged()
+    {
+        groupedCommands = BuildGroupedCommands(commands, filterText);
+        StateHasChanged();
+    }
+    private GroupedCommandItem? selectedGroupedCommand;
+    private Guid selectedCommandId => selectedGroupedCommand?.Command?.Id ?? Guid.Empty;
+    private CustomCommand? selectedCommand => selectedGroupedCommand?.Command;
+    private List<string> outputLines = new();
+    private bool isRunning = false;
+
+    protected override void OnInitialized()
+    {
+        try
+        {
+            LoadCommands();
+            // Expand all categories by default
+            expandedCategories = groupedCommands.Select(g => g.Category).Distinct().ToHashSet();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error in Commands.razor OnInitialized: {ex.Message}\n{ex.StackTrace}");
+        }
+    }
+
+    private async Task OpenAddDialog()
+    {
+        await DialogService.OpenAsync<AddCommandDialog>("Add Command", null);
+        LoadCommands();
+    }
+
+    private void LoadCommands()
+    {
+        try
+        {
+            commands = CustomCommandService.GetAll();
+            groupedCommands = BuildGroupedCommands(commands, filterText);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error in LoadCommands: {ex.Message}\n{ex.StackTrace}");
+        }
+    }
+    private List<GroupedCommandItem> BuildGroupedCommands(IEnumerable<CustomCommand> commands, string filter)
+    {
+        var filtered = string.IsNullOrWhiteSpace(filter)
+            ? commands
+            : commands.Where(c => (c.Name + " " + c.Command + " " + c.Arguments + " " + c.Category).Contains(filter, StringComparison.OrdinalIgnoreCase));
+        var groups = filtered.GroupBy(c => c.Category ?? "Uncategorized").OrderBy(g => g.Key);
+        var result = new List<GroupedCommandItem>();
+        foreach (var group in groups)
+        {
+            result.Add(new GroupedCommandItem { IsGroup = true, Category = group.Key });
+            foreach (var cmd in group.OrderBy(c => c.Name))
+            {
+                result.Add(new GroupedCommandItem { IsGroup = false, Category = group.Key, Command = cmd });
+            }
+        }
+        return result;
+    }
+
+    private void ItemRender(DropDownItemRenderEventArgs<GroupedCommandItem> args)
+    {
+        if (args.Item is GroupedCommandItem group && group.IsGroup)
+        {
+            args.Disabled = true;
+            args.Attributes.Add("style", "opacity: 1; font-weight: bold;");
+        }
+        else
+        {
+            args.Attributes.Add("style", "margin-inline-start: 1.5em;");
+        }
+    }
+
+    public class GroupedCommandItem
+    {
+        public bool IsGroup { get; set; }
+        public string Category { get; set; } = string.Empty;
+        public CustomCommand? Command { get; set; }
+        public Guid? Id => Command?.Id;
+    }
+
+    private void OnCommandSelected()
+    {
+        outputLines.Clear();
+        isRunning = false;
+        StateHasChanged();
+    }
+
+    // Keep groupedCommands in sync with filterText
+    private string FilterText
+    {
+        get => filterText;
+        set
+        {
+            filterText = value;
+            groupedCommands = BuildGroupedCommands(commands, filterText);
+        }
+    }
+
+    private async Task EditCommand(CustomCommand cmd)
+    {
+        var parameters = new Dictionary<string, object> { ["EditCommand"] = cmd };
+        await DialogService.OpenAsync<AddCommandDialog>("Edit Command", parameters);
+        LoadCommands();
+    }
+
+    private void DeleteCommand(Guid id)
+    {
+        CustomCommandService.Delete(id);
+        LoadCommands();
+    }
+
+    private async Task RunCommand(CustomCommand cmd)
+    {
+        selectedGroupedCommand = groupedCommands.FirstOrDefault(g => !g.IsGroup && g.Command?.Id == cmd.Id);
+        outputLines.Clear();
+        isRunning = true;
+        StateHasChanged();
+        var reader = CommandExecutionService.ExecuteCommandStream(cmd.Command, cmd.Arguments, string.IsNullOrWhiteSpace(cmd.WorkingDirectory) ? null : cmd.WorkingDirectory);
+        await foreach (var line in reader.ReadAllAsync())
+        {
+            outputLines.Add(line);
+            StateHasChanged();
+        }
+        isRunning = false;
+        StateHasChanged();
+    }
+
+    private void OnRowSelect(CustomCommand cmd) { /* Optionally handle row selection */ }
+
+    private void OnSelectCommand(GroupedCommandItem item)
+    {
+        selectedGroupedCommand = item;
+        outputLines.Clear();
+        isRunning = false;
+        StateHasChanged();
+    }
+}

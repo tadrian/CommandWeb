@@ -1,0 +1,55 @@
+@page "/run/{id:guid}"
+@using CommandWeb.Services
+@inject ICustomCommandService CustomCommandService
+@inject ICommandExecutionService CommandExecutionService
+
+@code {
+    [Parameter]
+    public Guid id { get; set; }
+    private CustomCommand? command;
+    private List<string> outputLines = new();
+    private bool isRunning = false;
+
+    protected override async Task OnInitializedAsync()
+    {
+        command = CustomCommandService.Get(id);
+        if (command is not null)
+        {
+            isRunning = true;
+            var reader = CommandExecutionService.ExecuteCommandStream(command.Command, command.Arguments, string.IsNullOrWhiteSpace(command.WorkingDirectory) ? null : command.WorkingDirectory);
+            await foreach (var line in reader.ReadAllAsync())
+            {
+                outputLines.Add(line);
+                StateHasChanged();
+            }
+            isRunning = false;
+        }
+    }
+}
+
+<h3>Run Command</h3>
+@if (command is null)
+{
+    <p>Command not found.</p>
+}
+else
+{
+    <div>
+        <strong>Name:</strong> @command.Name<br />
+        <strong>Command:</strong> @command.Command<br />
+        <strong>Arguments:</strong> @command.Arguments<br />
+        <strong>Created:</strong> @command.CreatedAt
+    </div>
+    <h4>Output</h4>
+    <pre style="background:#222;color:#eee;padding:1em;max-height:400px;overflow:auto;">
+@foreach (var line in outputLines)
+{
+    @line
+    <br />
+}
+@if (isRunning)
+{
+    <span>...</span>
+}
+    </pre>
+}
