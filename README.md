@@ -1,11 +1,38 @@
+
 # CommandWeb
 
-A Blazor Server application for managing and executing custom commands. This project demonstrates real-time command execution, data display, and integration with Radzen Blazor components.
+CommandWeb is a modern Blazor Server application that lets you create, manage, and execute custom shell commands directly from your browser. It’s designed for power users, sysadmins, and developers who want a real-time, web-based command center for their scripts and automation tasks.
+
+## Why CommandWeb?
+
+- **Centralized Command Management:** Organize all your custom scripts and commands in one place, accessible from anywhere on your local network.
+- **Real-Time Console Streaming:** See command output as it happens, just like a terminal, but in your browser.
+- **Modern UI:** Built with Radzen Blazor components for a responsive, interactive experience.
+- **Extensible:** Easily add new commands, automate tasks, and monitor results live.
+
+### What Makes It Cool?
+
+- **Live Console Output:** No more waiting for a command to finish—watch the output stream in real time.
+- **Web-Based Control:** Run and monitor commands from any device with a browser.
+- **Safe by Design:** By default, the app only binds to localhost for security.
+
+## How SignalR Powers Real-Time Streaming
+
+CommandWeb uses [SignalR](https://learn.microsoft.com/aspnet/core/signalr/introduction) to enable real-time, bi-directional communication between the server and your browser. When you run a command, the server executes it and streams the console output line-by-line to all connected clients instantly. This means you see the command’s progress and results live, just like in a native terminal, but with the convenience of a web UI.
+
+**How it works:**
+
+1. You trigger a command from the web interface.
+2. The server starts the process and captures its output.
+3. As each line is produced, SignalR pushes it to your browser in real time.
+4. The UI updates instantly, showing you the live console output.
+
+This makes CommandWeb ideal for monitoring long-running scripts, automation, or any process where immediate feedback is valuable.
 
 ## Features
 
 - Add, edit, and run custom commands
-- Real-time updates using SignalR
+- Real-time console output streaming with SignalR
 - Responsive UI with Radzen Blazor components
 - Weather forecast sample page
 
